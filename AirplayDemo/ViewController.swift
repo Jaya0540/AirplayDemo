@@ -13,6 +13,7 @@ import AVFoundation
 class ViewController: UIViewController {
     var airPlay = UIView()
     var player: AVPlayer?
+    var routeDetector: AVRouteDetector?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,13 +23,14 @@ class ViewController: UIViewController {
         
         setUpAVPlayer()
         configureAudioSession()
+        configureRouteDetector()
     }
 
     func setUpAirPlayButton() {
         airPlay.frame = CGRect(x: 0, y: 0, width: 30, height: 30)
         let buttonView = UIView(frame: CGRect(x: 0, y: 0, width: 30, height: 30))
         let routerPickerView = AVRoutePickerView(frame: buttonView.bounds)
-        routerPickerView.tintColor = UIColor.black
+        routerPickerView.tintColor = UIColor.white
         routerPickerView.activeTintColor = .green
         buttonView.addSubview(routerPickerView)
         self.airPlay.addSubview(buttonView)
@@ -36,7 +38,7 @@ class ViewController: UIViewController {
     
     func setUpAVPlayer() {
         // Example URL for audio or video
-        guard let url = URL(string: "https://example.com/video.mp4") else { return }
+        guard let url = URL(string: "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8") else { return }
         
         // Initialize the AVPlayer with the URL
         player = AVPlayer(url: url)
@@ -71,6 +73,29 @@ class ViewController: UIViewController {
                                                object: audioSession)
     }
     
+    func configureRouteDetector() {
+        routeDetector = AVRouteDetector()
+        routeDetector?.isRouteDetectionEnabled = true
+        
+        // Add observer for the isRouteDetected property using KVO
+        routeDetector?.addObserver(self, forKeyPath: "isRouteDetected", options: [.new, .initial], context: nil)
+    }
+    
+    // KVO observer method
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "isRouteDetected" {
+            if let isRouteDetected = change?[.newKey] as? Bool {
+                if isRouteDetected {
+                    print("Route detected")
+                    // Update UI or handle the detected route
+                } else {
+                    print("No route detected")
+                    // Update UI or handle the absence of a detected route
+                }
+            }
+        }
+    }
+    
     @objc func handleRouteChange(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
               let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
@@ -85,6 +110,9 @@ class ViewController: UIViewController {
             break
         }
     }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
+        routeDetector?.removeObserver(self, forKeyPath: "isRouteDetected")
+    }
 }
-
-
